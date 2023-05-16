@@ -6,9 +6,12 @@ use App\Entity\Product;
 use App\Service\ProductService;
 use App\Service\SaleService;
 use App\Service\TypeService;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\HttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Annotation\Route;
 
 
@@ -27,10 +30,29 @@ class ProductController extends AbstractController
     {
         $limit = $req->query->get('limit', null);
         $page = $req->query->get('page', null);
-        $products = $this->productService->readAll($page, $limit);
+        $type = $req->query->get('type', null);
+        $products = $this->productService->readAll($page, $limit, $type);
         return $this->json($products);
     }
-
+    
+    #[Route('/product/getInMass', name: 'app_getInMass_products', methods: ['GET', 'POST'])]
+    public function getInMass(Request $req){
+        $ids = $req->query->get('ids');
+        $idsInArray = explode(',', $ids);
+        $products = [];
+        foreach ($idsInArray as $id){
+            $product = $this->productService->read($id);
+            if(is_null($product)){
+                throw new NotFoundHttpException(json_encode([
+                    'message' => 'Product with id '. $id .' not found',
+                    "code" => "404"
+                ]));
+            }
+            $products[] = $product;
+        }
+            return $this->json($products);
+    }
+    
     #[Route('/product/{id}', name: 'app_product_get', methods: ['GET'])]
     public function getProduct(int $id): Response
     {
@@ -39,9 +61,10 @@ class ProductController extends AbstractController
     }
 
     #[Route('/product', name: 'app_product_create', methods: ['POST'])]
-    public function createProduct(Request $req): Response
+    public function createProduct(Request $req, LoggerInterface $logger): Response
     {
-        $data = json_decode($req->getContent(), true);
+        //$data = json_decode($req->getContent(), true);
+        $data = $req->request->all();
         if(!isset($data['name']) || !isset($data['basePrice']) || !isset($data['type']) || !isset($data['stockQuantity'])){
             return $this->json(['error' => 'Missing parameters'], 400);
         }
@@ -55,6 +78,15 @@ class ProductController extends AbstractController
         $product->setBasePrice($data['basePrice']);
         $product->setType($type);
         $product->setStockQuantity($data['stockQuantity']);
+ 
+        $image = $req->files->get('image');
+        if(!is_null($image)){
+            $imageName = uniqid() . '.' . $image->guessExtension();
+            $image->move('../public/images/', $imageName);
+            $product->addImage($imageName);
+        }
+
+
         $this->productService->create($product);
 
         return $this->json($product);
@@ -95,6 +127,7 @@ class ProductController extends AbstractController
         return $this->json($product);
     }
 
+
     #[Route('/product/{id}', name: 'app_product_delete', methods: ['DELETE'])]
     public function deleteProduct(int $id): Response
     {
@@ -105,5 +138,6 @@ class ProductController extends AbstractController
         $this->productService->delete($product);
         return $this->json(['success' => 'Product deleted']);
     }
+
 
 }

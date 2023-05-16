@@ -19,11 +19,16 @@ abstract class BaseService
         return $this->getRepository()->find($id);
     }
 
-    public function readAll($page=null, $limit=null){
-        if(!is_null($page) && !is_null($limit))
-            return $this->getRepository()->findBy([], null, $limit, ($page-1)*$limit);
+    public function readAll($page=null, $limit=null, $type=null){
 
-        return $this->getRepository()->findBy([], null, $limit, $page);
+        $filter = [];
+        if(!is_null($type))
+            $filter['type'] = $type;
+
+        if(!is_null($page) && !is_null($limit))
+            return $this->getRepository()->findBy($filter, null, $limit, ($page-1)*$limit);
+
+        return $this->getRepository()->findBy($filter, null, $limit, $page);
     }
 
     public function update($entity)
