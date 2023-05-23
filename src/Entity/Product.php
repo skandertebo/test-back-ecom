@@ -4,6 +4,8 @@ namespace App\Entity;
 
 use App\Entity\Type;
 use App\Repository\ProductRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: ProductRepository::class)]
@@ -27,7 +29,8 @@ class Product implements \JsonSerializable
     #[ORM\Column]
     private ?int $stockQuantity = null;
 
-    #[ORM\ManyToOne(inversedBy: 'products')]
+    #[ORM\ManyToOne(inversedBy: 'products', )]
+    #[ORM\JoinColumn(onDelete:"SET NULL")]
     private ?Sale $sale = null;
 
     #[ORM\Column(type: 'json', nullable: true)]
@@ -35,6 +38,13 @@ class Product implements \JsonSerializable
 
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $description = null;
+
+
+
+    public function __construct()
+    {
+        $this->images = [];
+    }
     
     public function getDescription(): ?string
     {
@@ -156,4 +166,6 @@ class Product implements \JsonSerializable
             'description' => $this->getDescription()
         ];
     }
+
+
 }

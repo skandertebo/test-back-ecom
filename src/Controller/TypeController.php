@@ -4,9 +4,13 @@ namespace App\Controller;
 
 use App\Entity\Type;
 use App\Service\TypeService;
+use Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\HttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Annotation\Route;
 
 class TypeController extends AbstractController
@@ -45,7 +49,7 @@ class TypeController extends AbstractController
         $data = json_decode($request->getContent(), true);
         $type = $this->typeService->read($id);
         if(is_null($type)){
-            return $this->json(['error' => 'Type not found'], 404);
+           throw new NotFoundHttpException($this->json(['error' => 'Type not found'], 404));
         }
         if(isset($data['name'])){
             $type->setName($data['name']);
@@ -55,12 +59,16 @@ class TypeController extends AbstractController
     }
 
     #[Route('/type/{id}', name: 'app_type_delete', methods: ['DELETE'])]
-    public function delete(int $id): Response{
+    public function delete(int $id, LoggerInterface $logger): Response{
         $type = $this->typeService->read($id);
         if(is_null($type)){
             return $this->json(['error' => 'Type not found'], 404);
         }
-        $this->typeService->delete($type);
-        return $this->json(['message' => 'Type deleted']);
+        try {
+            $this->typeService->delete($type);
+            return $this->json(['message' => 'Type deleted']);
+        } catch (ForeignKeyConstraintViolationException $e) {
+            return $this->json(['message' => 'Type is used in a product', 'error'=>'ForeignKeyConstraintViolationException'], 400);
+        }
     }
 }

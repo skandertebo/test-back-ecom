@@ -8,7 +8,7 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: SaleRepository::class)]
-class Sale
+class Sale implements \JsonSerializable
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -16,16 +16,20 @@ class Sale
     private ?int $id = null;
 
     #[ORM\Column]
+    private string $name;
+
+
+    #[ORM\Column]
     private ?float $rate = null;
 
-    #[ORM\OneToMany(mappedBy: 'sale', targetEntity: product::class)]
+    #[ORM\OneToMany(mappedBy: 'sale', targetEntity: Product::class)]
     private Collection $products;
 
     #[ORM\Column]
     private ?bool $expired = null;
 
     #[ORM\Column(type: 'datetime', nullable: true)]
-    private ?bool $expireDate = null;
+    private ?\DateTimeInterface $expireDate = null;
 
     public function __construct()
     {
@@ -62,6 +66,20 @@ class Sale
 
         return $this;
     }
+
+    public function getName(): ?string
+    {
+        return $this->name;
+    }
+
+    public function setName(string $name): self
+    {
+        
+        $this->name = $name;
+
+        return $this;
+    }
+
 
     /**
      * @return Collection<int, product>
@@ -103,5 +121,16 @@ class Sale
         $this->expired = $expired;
 
         return $this;
+    }
+
+    public function jsonSerialize()
+    {
+        return [
+            'id' => $this->getId(),
+            'name' => $this->getName(),
+            'rate' => $this->getRate(),
+            'expired' => $this->isExpired(),
+            'expireDate' => $this->getExpireDate(),
+        ];
     }
 }

@@ -12,19 +12,19 @@ class SaleController extends AbstractController
 {
 
     public function __construct(private SaleService $saleService){}
-    #[Route('/sales', name: 'app_sales', methods: ['GET'])]
+    #[Route('/sale', name: 'app_sales', methods: ['GET'])]
     public function getAll(){
         $sales = $this->saleService->readAll();
         return $this->json($sales);
     }
 
-    #[Route('/sales/{id}', name: 'app_sales_get', methods: ['GET'])]
+    #[Route('/sale/{id}', name: 'app_sales_get', methods: ['GET'])]
     public function get(int $id): Response{
         $sale = $this->saleService->read($id);
         return $this->json($sale);
     }
 
-    #[Route('/sales', name: 'app_sales_create', methods: ['POST'])]
+    #[Route('/sale', name: 'app_sales_create', methods: ['POST'])]
     public function create(Request $request): Response{
         $data = json_decode($request->getContent(), true);
         if(!isset($data['rate'])){
@@ -32,12 +32,17 @@ class SaleController extends AbstractController
         }
         $sale = new Sale();
         $sale->setRate($data['rate'])
-            ->setExpired(false);
+            ->setExpired($data['expired'])
+            ->setName($data['name'])
+            ->setExpireDate(
+                new \DateTime($data['expireDate']
+            )
+            );
         $this->saleService->create($sale);
         return $this->json($sale);
     }
 
-    #[Route('/sales/{id}', name: 'app_sales_update', methods: ['PUT'])]
+    #[Route('/sale/{id}', name: 'app_sales_update', methods: ['PUT'])]
     public function update(int $id, Request $request): Response{
         $sale = $this->saleService->read($id);
         if(is_null($sale)){
@@ -54,7 +59,7 @@ class SaleController extends AbstractController
         return $this->json($sale);
     }
 
-    #[Route('/sales/{id}', name: 'app_sales_delete', methods: ['DELETE'])]
+    #[Route('/sale/{id}', name: 'app_sales_delete', methods: ['DELETE'])]
     public function delete(int $id): Response{
         $sale = $this->saleService->read($id);
         if(is_null($sale)){

@@ -13,7 +13,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Annotation\Route;
-
+use Symfony\Component\HttpFoundation\FileBag;
 
 class ProductController extends AbstractController
 {
@@ -35,7 +35,7 @@ class ProductController extends AbstractController
         return $this->json($products);
     }
     
-    #[Route('/product/getInMass', name: 'app_getInMass_products', methods: ['GET', 'POST'])]
+    #[Route('/product/getInMass', name: 'app_getInMass_products', methods: ['GET'])]
     public function getInMass(Request $req){
         $ids = $req->query->get('ids');
         $idsInArray = explode(',', $ids);
@@ -72,8 +72,10 @@ class ProductController extends AbstractController
         if(is_null($type)){
             return $this->json(['error' => 'Type not found'], 404);
         }
-
         $product = new Product();
+        if(isset($data['description'])){
+            $product->setDescription($data['description']);
+        }
         $product->setName($data['name']);
         $product->setBasePrice($data['basePrice']);
         $product->setType($type);
@@ -84,8 +86,16 @@ class ProductController extends AbstractController
             $imageName = uniqid() . '.' . $image->guessExtension();
             $image->move('../public/images/', $imageName);
             $product->addImage($imageName);
+        }else{
+            $images = $req->files->get('images');
+            if(!is_null($images)){
+                foreach ($images as $image){
+                    $imageName = uniqid() . '.' . $image->guessExtension();
+                    $image->move('../public/images/', $imageName);
+                    $product->addImage($imageName);
+                }
+            }
         }
-
 
         $this->productService->create($product);
 
@@ -93,15 +103,19 @@ class ProductController extends AbstractController
     }
 
     #[Route('/product/{id}', name: 'app_product_update', methods: ['PUT'])]
-    public function updateProduct(int $id, Request $req): Response
+    public function updateProduct(int $id, Request $req, LoggerInterface $logger): Response
     {
         $data = json_decode($req->getContent(), true);
+        $logger->log('warning', json_encode($data));
         $product = $this->productService->read($id);
         if(is_null($product)){
             return $this->json(['error' => 'Product not found'], 404);
         }
         if(isset($data['name'])){
             $product->setName($data['name']);
+        }
+        if(isset($data['description'])){
+            $product->setDescription($data['description']);
         }
         if(isset($data['basePrice'])){
             $product->setBasePrice($data['basePrice']);
@@ -114,11 +128,15 @@ class ProductController extends AbstractController
             $product->setType($type);
         }
         if(isset($data['sale'])){
-            $sale = $this->saleService->read($data['sale']);
-            if(is_null($sale)){
-                return $this->json(['error' => 'Sale not found'], 404);
+            if($data['sale'] == ''){
+                $product->setSale(null);
+            }else{
+                $sale = $this->saleService->read($data['sale']);
+                if(is_null($sale)){
+                    return $this->json(['error' => 'Sale not found'], 404);
+                }
+                $product->setSale($sale);
             }
-            $product->setSale($data['sale']);
         }
         if(isset($data['stockQuantity'])){
             $product->setStockQuantity($data['stockQuantity']);
